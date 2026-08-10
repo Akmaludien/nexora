@@ -9,7 +9,7 @@ This document separates repository facts from design intent:
 
 ## Current Architecture
 
-The present codebase is a Next.js 16 modular application with PostgreSQL/Prisma persistence, revocable opaque sessions, project-role authorization, validated APIs, deterministic intelligence, provider-neutral AI, and read-only MCP-style tools.
+The present codebase is a Next.js 16 modular application with PostgreSQL/Prisma persistence, revocable opaque sessions, project-role authorization, validated APIs, deterministic intelligence, provider-neutral AI, and read-only MCP-style tools. A Vinyasa design bridge persists `DesignContext` payloads and synchronizes them as `design-context` artifacts linked to the PRD.
 
 ```text
 demoProject

@@ -17,6 +17,7 @@ Nexora is an early product-intelligence foundation for turning software intent i
 - Responsive landing, dashboard, discovery, editor, graph, health, traceability, impact, decision, and export routes.
 - Signed `HttpOnly` sessions, project access claims, origin validation, secure headers, and Zod-validated APIs.
 - Context-aware local AI, an OpenAI-compatible server adapter, and authenticated read-only MCP-style tools.
+- **Vinyasa design bridge**: import design intelligence (Vinyasa `raw.json` atau `nexora.design-context.json`) menjadi artifact `design-context`, lengkap dengan `DesignContext` persisten, relasi ke PRD, endpoint API, halaman `Design bridge`, tool MCP `get_design_context`, dan file `.nexora/design/design-context.json` pada export.
 
 ## Not Implemented Yet
 
