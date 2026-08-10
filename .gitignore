@@ -7,3 +7,5 @@ coverage
 *.log
 .postgres-data
 .postgres-runtime
+*.tsbuildinfo
+graphify-out/
