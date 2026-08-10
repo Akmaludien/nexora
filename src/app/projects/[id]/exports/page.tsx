@@ -1,0 +1,2 @@
+import { ProjectShell } from "@/components/project-shell";import { ExportBrowser } from "@/components/export-browser";
+export default async function Page({params}:{params:Promise<{id:string}>}){const {id}=await params;return <ProjectShell id={id} active="exports"><main className="page"><div className="eyebrow">Execution intelligence</div><h1>AI coding agent export</h1><p className="subtle">Package the current persisted project knowledge.</p><ExportBrowser projectKey={id}/></main></ProjectShell>}

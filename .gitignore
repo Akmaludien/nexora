@@ -1,0 +1,9 @@
+node_modules
+.next
+.next-build
+coverage
+.env
+.env.local
+*.log
+.postgres-data
+.postgres-runtime

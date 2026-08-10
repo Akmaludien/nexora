@@ -1,0 +1,2 @@
+import Link from "next/link";
+export default function SignupPage(){return <main className="auth"><section className="auth-box"><div className="eyebrow">Early access</div><h1>Create a workspace</h1><p className="subtle">Cloud registration is not enabled in this local build. Use the signed demo workspace to evaluate the complete intelligence workflow.</p><Link className="btn btn-primary" href="/login">Open demo sign in</Link></section></main>}

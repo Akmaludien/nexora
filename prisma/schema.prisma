@@ -1,0 +1,348 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  DELETED
+}
+
+enum ProjectRole {
+  OWNER
+  EDITOR
+  VIEWER
+}
+
+enum ProjectComplexity {
+  SIMPLE
+  SMALL
+  MEDIUM
+  LARGE
+  ENTERPRISE
+}
+
+enum ProjectStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+enum ArtifactType {
+  PRD
+  REQUIREMENT
+  FEATURE
+  USER_STORY
+  BUSINESS_RULE
+  USER_FLOW
+  API
+  DATABASE
+  ARCHITECTURE
+  SECURITY
+  TESTING
+  ROADMAP
+  TASK
+  DECISION
+  DESIGN_CONTEXT
+}
+
+enum ArtifactStatus {
+  DRAFT
+  REVIEW
+  VALIDATED
+  DEPRECATED
+  ARCHIVED
+}
+
+enum RelationshipType {
+  DEPENDS_ON
+  IMPLEMENTS
+  AFFECTS
+  REQUIRES
+  MAPS_TO
+  VALIDATES
+  DERIVED_FROM
+}
+
+enum MutationKind {
+  CREATE
+  UPDATE
+  RESTORE
+  IMPACT_APPLY
+  DELETE
+}
+
+enum ImpactStatus {
+  REVIEW
+  APPLIED
+  REJECTED
+}
+
+enum ReviewStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+enum DiscoveryStatus {
+  ANSWERED
+  SKIPPED
+}
+
+enum ExportTarget {
+  OPENCODE
+  CLAUDE
+  CODEX
+  SPEC_KIT
+  GENERIC
+}
+
+enum DesignSource {
+  VINYASA
+  MANUAL
+}
+
+model User {
+  id               String            @id @default(uuid()) @db.Uuid
+  email            String            @unique @db.VarChar(320)
+  passwordHash     String            @db.VarChar(100)
+  displayName      String?           @db.VarChar(120)
+  status           UserStatus        @default(ACTIVE)
+  createdAt        DateTime          @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime          @updatedAt @db.Timestamptz(3)
+  sessions         Session[]
+  memberships      ProjectMember[]
+  artifactVersions ArtifactVersion[]
+  mutations        MutationRecord[]
+  impactRequests   ImpactAnalysis[]
+  impactReviews    ImpactItem[]
+  discoveryAnswers DiscoveryAnswer[]
+  exports          ProjectExport[]
+}
+
+model Session {
+  id         String    @id @default(uuid()) @db.Uuid
+  userId     String    @db.Uuid
+  tokenHash  String    @unique @db.VarChar(64)
+  expiresAt  DateTime  @db.Timestamptz(3)
+  revokedAt  DateTime? @db.Timestamptz(3)
+  createdAt  DateTime  @default(now()) @db.Timestamptz(3)
+  lastSeenAt DateTime  @default(now()) @db.Timestamptz(3)
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, revokedAt, expiresAt])
+}
+
+model Project {
+  id            String                 @id @default(uuid()) @db.Uuid
+  key           String                 @unique @db.VarChar(40)
+  name          String                 @db.VarChar(160)
+  description   String                 @default("") @db.Text
+  complexity    ProjectComplexity      @default(SIMPLE)
+  status        ProjectStatus          @default(ACTIVE)
+  createdAt     DateTime               @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime               @updatedAt @db.Timestamptz(3)
+  members       ProjectMember[]
+  artifacts     Artifact[]
+  relationships ArtifactRelationship[]
+  mutations     MutationRecord[]
+  impacts       ImpactAnalysis[]
+  discovery     DiscoveryAnswer[]
+  exports       ProjectExport[]
+  rateLimits    RateLimitWindow[]
+  designContext DesignContext[]
+}
+
+model ProjectMember {
+  id        String      @id @default(uuid()) @db.Uuid
+  projectId String      @db.Uuid
+  userId    String      @db.Uuid
+  role      ProjectRole @default(VIEWER)
+  createdAt DateTime    @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime    @updatedAt @db.Timestamptz(3)
+  project   Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, userId])
+  @@index([userId, role])
+}
+
+model Artifact {
+  id                    String                 @id @default(uuid()) @db.Uuid
+  projectId             String                 @db.Uuid
+  key                   String                 @db.VarChar(64)
+  type                  ArtifactType
+  title                 String                 @db.VarChar(240)
+  status                ArtifactStatus         @default(DRAFT)
+  currentVersionNumber  Int                    @default(1)
+  metadata              Json?
+  createdAt             DateTime               @default(now()) @db.Timestamptz(3)
+  updatedAt             DateTime               @updatedAt @db.Timestamptz(3)
+  archivedAt            DateTime?              @db.Timestamptz(3)
+  project               Project                @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  versions              ArtifactVersion[]
+  outgoingRelationships ArtifactRelationship[] @relation("RelationshipSource")
+  incomingRelationships ArtifactRelationship[] @relation("RelationshipTarget")
+  mutations             MutationRecord[]
+  impactSources         ImpactAnalysis[]
+  impactItems           ImpactItem[]
+  designContext         DesignContext?
+
+  @@unique([projectId, key])
+  @@unique([id, projectId])
+  @@index([projectId, type, status])
+}
+
+model ArtifactVersion {
+  id          String   @id @default(uuid()) @db.Uuid
+  artifactId  String   @db.Uuid
+  version     Int
+  title       String   @db.VarChar(240)
+  content     String   @db.Text
+  changeNote  String?  @db.Text
+  metadata    Json?
+  createdById String?  @db.Uuid
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+  artifact    Artifact @relation(fields: [artifactId], references: [id], onDelete: Cascade)
+  createdBy   User?    @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@unique([artifactId, version])
+  @@index([artifactId, createdAt])
+}
+
+model ArtifactRelationship {
+  id               String           @id @default(uuid()) @db.Uuid
+  projectId        String           @db.Uuid
+  sourceArtifactId String           @db.Uuid
+  targetArtifactId String           @db.Uuid
+  type             RelationshipType
+  reason           String           @db.Text
+  createdAt        DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime         @updatedAt @db.Timestamptz(3)
+  project          Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  sourceArtifact   Artifact         @relation("RelationshipSource", fields: [sourceArtifactId, projectId], references: [id, projectId], onDelete: Cascade)
+  targetArtifact   Artifact         @relation("RelationshipTarget", fields: [targetArtifactId, projectId], references: [id, projectId], onDelete: Cascade)
+
+  @@unique([projectId, sourceArtifactId, targetArtifactId, type])
+  @@index([projectId, sourceArtifactId, type])
+  @@index([projectId, targetArtifactId, type])
+}
+
+model MutationRecord {
+  id          String       @id @default(uuid()) @db.Uuid
+  projectId   String       @db.Uuid
+  artifactId  String?      @db.Uuid
+  actorId     String?      @db.Uuid
+  kind        MutationKind
+  fromVersion Int?
+  toVersion   Int?
+  reason      String?      @db.Text
+  metadata    Json?
+  createdAt   DateTime     @default(now()) @db.Timestamptz(3)
+  project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  artifact    Artifact?    @relation(fields: [artifactId], references: [id], onDelete: SetNull)
+  actor       User?        @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([projectId, createdAt])
+  @@index([artifactId, createdAt])
+}
+
+model ImpactAnalysis {
+  id               String       @id @default(uuid()) @db.Uuid
+  projectId        String       @db.Uuid
+  sourceArtifactId String       @db.Uuid
+  requestedById    String?      @db.Uuid
+  status           ImpactStatus @default(REVIEW)
+  summary          String?      @db.Text
+  createdAt        DateTime     @default(now()) @db.Timestamptz(3)
+  resolvedAt       DateTime?    @db.Timestamptz(3)
+  project          Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  sourceArtifact   Artifact     @relation(fields: [sourceArtifactId], references: [id], onDelete: Cascade)
+  requestedBy      User?        @relation(fields: [requestedById], references: [id], onDelete: SetNull)
+  items            ImpactItem[]
+
+  @@index([projectId, status, createdAt])
+}
+
+model ImpactItem {
+  id              String         @id @default(uuid()) @db.Uuid
+  analysisId      String         @db.Uuid
+  artifactId      String         @db.Uuid
+  reason          String         @db.Text
+  proposedContent String?        @db.Text
+  reviewStatus    ReviewStatus   @default(PENDING)
+  reviewedById    String?        @db.Uuid
+  reviewedAt      DateTime?      @db.Timestamptz(3)
+  createdAt       DateTime       @default(now()) @db.Timestamptz(3)
+  analysis        ImpactAnalysis @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+  artifact        Artifact       @relation(fields: [artifactId], references: [id], onDelete: Cascade)
+  reviewedBy      User?          @relation(fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@unique([analysisId, artifactId])
+  @@index([analysisId, reviewStatus])
+}
+
+model DiscoveryAnswer {
+  id           String          @id @default(uuid()) @db.Uuid
+  projectId    String          @db.Uuid
+  category     String          @db.VarChar(64)
+  value        String?         @db.Text
+  status       DiscoveryStatus
+  answeredById String?         @db.Uuid
+  createdAt    DateTime        @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime        @updatedAt @db.Timestamptz(3)
+  project      Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  answeredBy   User?           @relation(fields: [answeredById], references: [id], onDelete: SetNull)
+
+  @@unique([projectId, category])
+}
+
+model RateLimitWindow {
+  id          String   @id @default(uuid()) @db.Uuid
+  projectId   String?  @db.Uuid
+  subject     String   @db.VarChar(160)
+  action      String   @db.VarChar(80)
+  windowStart DateTime @db.Timestamptz(3)
+  count       Int      @default(1)
+  expiresAt   DateTime @db.Timestamptz(3)
+  project     Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([subject, action, windowStart])
+  @@index([expiresAt])
+}
+
+model ProjectExport {
+  id            String       @id @default(uuid()) @db.Uuid
+  projectId     String       @db.Uuid
+  requestedById String?      @db.Uuid
+  target        ExportTarget
+  artifactCount Int
+  checksum      String       @db.VarChar(64)
+  createdAt     DateTime     @default(now()) @db.Timestamptz(3)
+  project       Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  requestedBy   User?        @relation(fields: [requestedById], references: [id], onDelete: SetNull)
+
+  @@index([projectId, createdAt])
+}
+
+model DesignContext {
+  id             String       @id @default(uuid()) @db.Uuid
+  projectId      String       @db.Uuid
+  artifactId     String       @unique @db.Uuid
+  source         DesignSource @default(VINYASA)
+  externalRef    String?      @db.Text
+  sourceVersion  String?      @db.VarChar(100)
+  checksum       String?      @db.VarChar(64)
+  payload        Json?
+  synchronizedAt DateTime?    @db.Timestamptz(3)
+  createdAt      DateTime     @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime     @updatedAt @db.Timestamptz(3)
+  project        Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  artifact       Artifact     @relation(fields: [artifactId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, source, synchronizedAt])
+}
