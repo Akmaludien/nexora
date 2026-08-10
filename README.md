@@ -18,14 +18,17 @@ Nexora is an early product-intelligence foundation for turning software intent i
 - Signed `HttpOnly` sessions, project access claims, origin validation, secure headers, and Zod-validated APIs.
 - Context-aware local AI, an OpenAI-compatible server adapter, and authenticated read-only MCP-style tools.
 - **Vinyasa design bridge**: import design intelligence (Vinyasa `raw.json` atau `nexora.design-context.json`) menjadi artifact `design-context`, lengkap dengan `DesignContext` persisten, relasi ke PRD, endpoint API, halaman `Design bridge`, tool MCP `get_design_context`, dan file `.nexora/design/design-context.json` pada export.
+- **Identity & collaboration**: signup, create-project, project-role membership (OWNER/EDITOR/VIEWER), halaman `Settings` untuk kelola member, rate limit berbasis database.
+- **MCP protocol server**: `npm run mcp` menjalankan server MCP stdio (Model Context Protocol SDK) dengan 12 tool read-only; auth token opsional.
+- **AI durable queue**: model `AiJob`, endpoint `POST/GET /api/ai/jobs`, dan worker `npm run worker` dengan claim transactional.
+- **Readiness & deployment**: `GET /api/health`, `docker-compose.yml`, `Dockerfile`, dan [docs/deployment.md](docs/deployment.md) untuk managed PostgreSQL + HTTPS/cookie `Secure`.
 
 ## Not Implemented Yet
 
-- Self-service registration, password reset, and email verification UI
-- Organization administration and expanded audit-event reporting
-- Background jobs or queues
-- Full SDK-backed MCP transport and resources
-- Background AI jobs and streaming provider responses
+- Self-service password reset dan email verification (signup + session sudah ada)
+- Organization administration dan generalized audit-event stream (mutation records sudah ada)
+- Streaming provider responses (model provider saat ini synchronous; antrean `AiJob` tersedia)
+- MCP resources (subscriptions) — tool protocol server sudah ada
 
 ## Technology
 
@@ -90,6 +93,10 @@ npm run db:migrate # Apply checked-in migrations
 npm run db:seed    # Seed the demo owner and project
 npm run test:integration # PostgreSQL repository integration tests
 npm run test:e2e   # HTTP production-flow tests (requires app on port 3421)
+npm run test:e2e-browser # Playwright browser tests (build + DB + port 3200)
+npm run test:mcp   # MCP protocol server assertions
+npm run mcp        # Run the MCP stdio server
+npm run worker     # Run the AI job worker
 ```
 
 Open `http://localhost:3000`. Local demo credentials are prefilled on `/login` unless overridden by environment variables.

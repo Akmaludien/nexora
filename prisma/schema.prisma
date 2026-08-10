@@ -88,6 +88,13 @@ enum ReviewStatus {
   REJECTED
 }
 
+enum JobStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
 enum DiscoveryStatus {
   ANSWERED
   SKIPPED
@@ -122,6 +129,7 @@ model User {
   impactReviews    ImpactItem[]
   discoveryAnswers DiscoveryAnswer[]
   exports          ProjectExport[]
+  aiJobs           AiJob[]
 }
 
 model Session {
@@ -155,6 +163,7 @@ model Project {
   exports       ProjectExport[]
   rateLimits    RateLimitWindow[]
   designContext DesignContext[]
+  aiJobs        AiJob[]
 }
 
 model ProjectMember {
@@ -345,4 +354,25 @@ model DesignContext {
   artifact       Artifact     @relation(fields: [artifactId], references: [id], onDelete: Cascade)
 
   @@index([projectId, source, synchronizedAt])
+}
+
+model AiJob {
+  id            String    @id @default(uuid()) @db.Uuid
+  projectId     String    @db.Uuid
+  requestedById String?   @db.Uuid
+  status        JobStatus @default(PENDING)
+  prompt        String    @db.Text
+  artifactId    String?   @db.VarChar(64)
+  provider      String?   @db.VarChar(80)
+  model         String?   @db.VarChar(160)
+  result        String?   @db.Text
+  error         String?   @db.Text
+  createdAt     DateTime  @default(now()) @db.Timestamptz(3)
+  startedAt     DateTime? @db.Timestamptz(3)
+  completedAt   DateTime? @db.Timestamptz(3)
+  project       Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  requestedBy   User?     @relation(fields: [requestedById], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([projectId, createdAt])
 }

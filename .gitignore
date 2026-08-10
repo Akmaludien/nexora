@@ -9,3 +9,7 @@ coverage
 .postgres-runtime
 *.tsbuildinfo
 graphify-out/
+test-results/
+playwright-report/
+blob-report/
+scripts/playwright-debug.ts

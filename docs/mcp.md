@@ -2,9 +2,47 @@
 
 ## Status
 
-Nexora currently exposes an authenticated read-only tool handler at `POST /api/mcp`. It is an MCP-ready HTTP foundation, not a complete SDK-backed MCP transport. Signed project claims and Zod allowlisting protect the endpoint; mutation and execution tools are not exposed.
+Nexora kini memiliki dua lapisan MCP:
 
-Implemented tools are `get_project_context`, `get_requirements`, `get_feature`, `get_architecture`, `get_api_spec`, `get_database_schema`, `get_tasks`, `get_decisions`, `get_design_context`, `get_spec_health`, `get_impact_analysis`, and `search_project_knowledge`.
+1. **HTTP tool endpoint** `POST /api/mcp` — sesi browser, rate limit per user, allowlist Zod, read-only.
+2. **MCP protocol server** `npm run mcp` — server stdio resmi (Model Context Protocol SDK) yang menjalankan tool yang sama terhadap database. Semua tool read-only; tidak ada mutation/execution.
+
+Tool yang tersedia: `get_project_context`, `get_requirements`, `get_feature`, `get_architecture`, `get_api_spec`, `get_database_schema`, `get_tasks`, `get_decisions`, `get_design_context`, `get_spec_health`, `get_impact_analysis`, `search_project_knowledge`.
+
+## MCP protocol server
+
+Jalankan server stdio:
+
+```bash
+export DATABASE_URL="postgresql://..."   # wajib
+export NEXORA_MCP_TOKEN="secret"         # opsional; jika di-set, setiap tool call harus membawa token ini
+npm run mcp
+```
+
+Contoh konfigurasi klien (Claude Code / Cursor):
+
+```json
+{
+  "mcpServers": {
+    "nexora": {
+      "command": "npx",
+      "args": ["tsx", "scripts/mcp-server.ts"],
+      "env": { "DATABASE_URL": "postgresql://...", "NEXORA_MCP_TOKEN": "secret" }
+    }
+  }
+}
+```
+
+Contoh penggunaan tool dari klien:
+
+```
+get_project_context(projectKey="nexora-demo")
+get_spec_health(projectKey="nexora-demo")
+search_project_knowledge(projectKey="nexora-demo", query="orders")
+get_design_context(projectKey="nexora-demo")
+```
+
+Tanpa `NEXORA_MCP_TOKEN`, server berjalan dalam mode kepercayaan lokal (hanya untuk developer). Dengan token, setiap panggilan memerlukan argumen `token` yang cocok. Server tidak pernah mengekspos mutation, execution, filesystem, atau SQL generik.
 
 ## Purpose
 

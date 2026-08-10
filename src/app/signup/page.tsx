@@ -1,2 +1,14 @@
-import Link from "next/link";
-export default function SignupPage(){return <main className="auth"><section className="auth-box"><div className="eyebrow">Early access</div><h1>Create a workspace</h1><p className="subtle">Cloud registration is not enabled in this local build. Use the signed demo workspace to evaluate the complete intelligence workflow.</p><Link className="btn btn-primary" href="/login">Open demo sign in</Link></section></main>}
+import { SignupForm } from "@/components/signup-form";
+
+export default function SignupPage() {
+  return (
+    <main className="auth">
+      <section className="auth-box">
+        <div className="eyebrow">Early access</div>
+        <h1>Create a workspace</h1>
+        <p className="subtle" style={{ fontSize: 13 }}>Akun dibuat dengan bcrypt, diberi rate limit, dan langsung mendapat session. Proyek baru bisa dibuat dari dashboard.</p>
+        <SignupForm />
+      </section>
+    </main>
+  );
+}

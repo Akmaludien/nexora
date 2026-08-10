@@ -66,3 +66,50 @@ export async function incrementRateLimit(input:{subject:string;action:string;pro
 }
 
 export type TransactionClient=Prisma.TransactionClient;
+
+function projectKeyFromName(name:string):string{
+  const base=name.toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,32)||"project";
+  return `${base}-${Math.random().toString(36).slice(2,7)}`;
+}
+
+export async function createProjectWithOwner(actorId:string,input:{name:string;description?:string}){
+  const key=projectKeyFromName(input.name);
+  return db.$transaction(async tx=>{
+    const project=await tx.project.create({data:{key,name:input.name,description:input.description??""}});
+    await tx.projectMember.create({data:{projectId:project.id,userId:actorId,role:ProjectRole.OWNER}});
+    await tx.artifact.create({data:{projectId:project.id,key:"PRD-001",type:ArtifactType.PRD,title:"Product vision",status:ArtifactStatus.DRAFT,currentVersionNumber:1,versions:{create:{version:1,title:"Product vision",content:`# ${input.name}\n\n${input.description??""}\n\n## Vision\nDescribe the outcome this product creates.`,changeNote:"Seed vision from project creation",createdById:actorId}}}});
+    await tx.mutationRecord.create({data:{projectId:project.id,actorId,kind:MutationKind.CREATE,toVersion:1,reason:"Project created"}});
+    return{key,id:project.id};
+  });
+}
+
+export async function listMembers(projectId:string){
+  return db.projectMember.findMany({where:{projectId},include:{user:{select:{email:true,displayName:true}}},orderBy:{createdAt:"asc"}});
+}
+
+export async function addMember(projectId:string,email:string,role:ProjectRole){
+  const user=await db.user.findUnique({where:{email:email.trim().toLowerCase()}});
+  if(!user)throw new Error("USER_NOT_FOUND");
+  return db.projectMember.upsert({where:{projectId_userId:{projectId,userId:user.id}},create:{projectId,userId:user.id,role},update:{role}});
+}
+
+export async function setMemberRole(actorId:string,projectId:string,memberId:string,role:ProjectRole){
+  return db.$transaction(async tx=>{
+    const actor=await tx.projectMember.findFirst({where:{projectId,userId:actorId}});if(!actor||actor.role!==ProjectRole.OWNER)throw new Error("FORBIDDEN");
+    const target=await tx.projectMember.findUnique({where:{id:memberId}});if(!target||target.projectId!==projectId)throw new Error("MEMBER_NOT_FOUND");
+    const owners=await tx.projectMember.count({where:{projectId,role:ProjectRole.OWNER}});
+    if(target.role===ProjectRole.OWNER&&role!==ProjectRole.OWNER&&owners<=1)throw new Error("LAST_OWNER");
+    return tx.projectMember.update({where:{id:memberId},data:{role}});
+  });
+}
+
+export async function removeMember(actorId:string,projectId:string,memberId:string){
+  return db.$transaction(async tx=>{
+    const actor=await tx.projectMember.findFirst({where:{projectId,userId:actorId}});if(!actor||actor.role!==ProjectRole.OWNER)throw new Error("FORBIDDEN");
+    const target=await tx.projectMember.findUnique({where:{id:memberId}});if(!target||target.projectId!==projectId)throw new Error("MEMBER_NOT_FOUND");
+    if(target.userId===actorId)throw new Error("CANNOT_REMOVE_SELF");
+    const owners=await tx.projectMember.count({where:{projectId,role:ProjectRole.OWNER}});
+    if(target.role===ProjectRole.OWNER&&owners<=1)throw new Error("LAST_OWNER");
+    await tx.projectMember.delete({where:{id:memberId}});
+  });
+}
