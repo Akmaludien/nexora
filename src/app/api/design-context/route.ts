@@ -39,7 +39,7 @@ export async function POST(request: Request) {
   try {
     const result = await importDesignContext(context, { ctx: parsed.ctx, externalRef: body.sourceUrl, source: body.source === "MANUAL" ? "MANUAL" : "VINYASA" });
     const design = await getDesignContext(context.projectId);
-    return NextResponse.json({ result, design }, { status: 201 });
+    return NextResponse.json({ result, design }, { status: result.duplicate ? 200 : 201 });
   } catch (error) {
     console.error(JSON.stringify({ event: "design_context_import_failed", projectId: context.projectId, message: error instanceof Error ? error.message : "unknown" }));
     return NextResponse.json({ error: "Unable to import design context." }, { status: 500 });
