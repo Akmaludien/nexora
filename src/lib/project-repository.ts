@@ -67,7 +67,10 @@ export async function deleteRelationship(context:MemberContext,relationshipId:st
 
 export async function incrementRateLimit(input:{subject:string;action:string;projectId?:string;limit:number;windowSeconds:number}){
   const now=Date.now(),windowMs=input.windowSeconds*1000,windowStart=new Date(Math.floor(now/windowMs)*windowMs),expiresAt=new Date(Math.floor(now/windowMs)*windowMs+windowMs);
-  const result=await db.$transaction(async tx=>{await tx.rateLimitWindow.deleteMany({where:{expiresAt:{lt:new Date(now)}}});const row=await tx.rateLimitWindow.upsert({where:{subject_action_windowStart:{subject:input.subject,action:input.action,windowStart}},create:{subject:input.subject,action:input.action,windowStart,expiresAt,count:1,projectId:input.projectId},update:{count:{increment:1}}});return row.count;});
+  // Cleanup is maintenance work; keep it outside the short atomic increment
+  // transaction so a cold database connection cannot consume its 5s timeout.
+  await db.rateLimitWindow.deleteMany({where:{expiresAt:{lt:new Date(now)}}});
+  const result=await db.$transaction(async tx=>{const row=await tx.rateLimitWindow.upsert({where:{subject_action_windowStart:{subject:input.subject,action:input.action,windowStart}},create:{subject:input.subject,action:input.action,windowStart,expiresAt,count:1,projectId:input.projectId},update:{count:{increment:1}}});return row.count;});
   return{allowed:result<=input.limit,remaining:Math.max(input.limit-result,0),retryAfter:Math.max(Math.ceil((expiresAt.getTime()-now)/1000),1)};
 }
 
