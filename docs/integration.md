@@ -104,7 +104,7 @@ Canonical payload (`schema: "nexora.design-context"`):
   },
   "health":       { "overall": 91 },
   "accessibility": { "critical": 0, "warning": 2, "pass": 8 },
-  "components":    { "total": 3 },
+  "components":    { "total": 3, "blocks": [/* optional Vinyasa component inventory, preserved verbatim */] },
   "design": {
     "pages":               [{ "path", "name" }],
     "components":          [{ "id", "variants" }],
@@ -114,13 +114,28 @@ Canonical payload (`schema: "nexora.design-context"`):
     "implementationHints": { "framework", "styling" },
     "accessibilityRules":  [],
     "layout":              {},
-    "visualLanguage":      {}
+    "visualLanguage":      {},
+    "adaptation":          {}
   }
 }
 ```
 
-The `design` block is **preserved as supplied** — Nexora stores it without loss so
-it can round-trip back to Vinyasa or feed the future Build Pack.
+Required minimum for an import to be accepted (`422` otherwise): the payload must
+resolve to at least one recognizable design token — one entry across
+`designSystem.colors`, `designSystem.neutralColors`, or
+`designSystem.fontFamilies`. Everything else is optional and defaults
+deterministically (`health.overall: null`, accessibility counters `0`,
+`components.total: 0`).
+
+Raw Vinyasa `DesignModel` exports are also accepted: `schemaVersion`,
+`metadata.tool/version`, `source.url/title`, `tokens.*`,
+`accessibility.wcagAA.*`, and the structured sections above are normalised into
+the canonical shape. `components` may arrive as an array (counted) or as an
+object with `total`/`blocks` (both preserved).
+
+The `design` block and `components.blocks` are **preserved as supplied** — Nexora
+stores them without loss so they can round-trip back to Vinyasa or feed the
+future Build Pack.
 
 ## Versioning
 
@@ -175,6 +190,44 @@ Every integration endpoint:
 The `NEXORA_INTEGRATION_TOKEN` must match in both Nexora and Vinyasa. When empty,
 programmatic (non-session) access is disabled.
 
+### Bearer (server-to-server)
+
+A valid Bearer token is **not** global access. The request is still resolved
+against `ProjectMember` for the requested project: the project must be `ACTIVE`
+and hold a member whose role is in the endpoint's allowed set. A project with no
+matching member is denied even with a correct token. Reads allow
+`OWNER|EDITOR|VIEWER`; `POST /api/design-context` requires `OWNER|EDITOR`.
+
+Because a token-backed call has no browser session, it is exempt from the
+same-origin (CSRF) check. Session-backed mutations still require same-origin.
+
+### System actor semantics
+
+A token-backed `MemberContext` carries:
+
+```text
+userId  = "system:vinyasa-integration"   // subject for logging/rate limiting; NOT a UUID
+actorId = null                            // attribution for persisted mutations
+```
+
+`actorId` is what reaches the nullable `ArtifactVersion.createdById` and
+`MutationRecord.actorId` foreign keys. System operations write `null` there — no
+synthetic UUID is inserted and no real user is impersonated. Session-backed
+requests set `actorId` to the authenticated user's id, so human edits stay
+attributable.
+
+### Status codes
+
+| Status | Condition |
+|---|---|
+| `400` | invalid `project_id`, malformed JSON, or missing `payload` |
+| `403` | cross-origin session mutation, or authorized-token/session without a writer membership |
+| `404` | `GET` where authorization failed or the project does not exist |
+| `422` | design payload contains no recognizable design tokens |
+| `500` | persistence failure (generic message; internal detail is logged, never returned) |
+| `200` | duplicate design import (`result.duplicate: true`) or a successful read |
+| `201` | new or changed design import persisted |
+
 ## Build Pack Readiness
 
 Nexora exposes a clean **Product Pack**:
@@ -220,7 +273,8 @@ npm test                    # Vitest unit tests (jsdom, no DB)
 npm run typecheck           # TypeScript
 npm run lint                # ESLint
 npm run test:integration    # PostgreSQL persistence + design bridge (requires DB)
-npm run test:roundtrip      # Nexora ↔ Vinyasa round-trip (requires DB)
+npm run test:roundtrip      # Nexora ↔ Vinyasa round-trip, in-process (requires DB)
+npm run test:http           # Nexora ↔ Vinyasa round-trip over HTTP (app on port 3421 + DB)
 npm run test:mcp            # MCP protocol server (requires DB)
 npm run test:e2e            # HTTP production-flow (app on port 3421)
 npm run test:e2e-browser    # Playwright browser (build + DB + port 3200)

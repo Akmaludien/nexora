@@ -93,6 +93,14 @@ async function main() {
   check(changed.version > firstVersion, "changed payload did not create next version");
   check((await getDesignContext(context.projectId))?.artifactVersion === changed.version, "active design version did not advance");
 
+  // --- System (token-backed) import: actorId null must not violate a FK ---
+  const systemPayload = { ...buildVinyasaDesignPayload("Roundtrip"), health: { overall: 97 } };
+  const systemContext: MemberContext = { ...(context as MemberContext), userId: "system:vinyasa-integration", actorId: null };
+  const systemImport = await importDesignContext(systemContext, { ctx: parseDesignContextInput(systemPayload).ctx, source: "VINYASA" });
+  check(systemImport.version > changed.version, "system import did not create next version");
+  const systemMutation = await db.mutationRecord.findFirst({ where: { projectId: context.projectId, actorId: null }, orderBy: { createdAt: "desc" } });
+  check(systemMutation, "system mutation record not persisted with a null actor");
+
   // --- Unauthorized project access: a non-member must not read this project ---
   const outsider = await db.user.upsert({ where: { email: `outsider-${suffix}@nexora.local`, }, create: { email: `outsider-${suffix}@nexora.local`, passwordHash: "x" }, update: {} });
   check(await requireMembership(outsider.id, created.key, [ProjectRole.VIEWER]) === null, "outsider granted access to project");
@@ -101,7 +109,7 @@ async function main() {
   const knowledge = await getProjectKnowledge(created.key);
   check(knowledge?.artifacts.some((a) => a.type === "prd"), "standalone product knowledge missing PRD");
 
-  console.log("Round-trip assertions passed: same project_id, product context unchanged, design context persisted, versioning, duplicate sync, changed payload, unauthorized access, standalone product knowledge");
+  console.log("Round-trip assertions passed: same project_id, product context unchanged, design context persisted, versioning, duplicate sync, changed payload, system actor (null FK), unauthorized access, standalone product knowledge");
 }
 
 main()

@@ -21,7 +21,11 @@ export interface NexoraDesignContext {
   };
   health: { overall: number | null };
   accessibility: { critical: number; warning: number; pass: number };
-  components: { total: number };
+  /**
+   * `total` is the component count. `blocks` is Vinyasa's structured component
+   * inventory and is preserved verbatim when supplied.
+   */
+  components: { total: number; blocks?: unknown };
   /**
    * Structured Vinyasa design intelligence. Nexora does NOT reinterpret this
    * information; it is persisted verbatim so it can round-trip back to Vinyasa
@@ -38,12 +42,13 @@ export interface NexoraDesignContext {
     accessibilityRules?: unknown;
     layout?: unknown;
     visualLanguage?: unknown;
+    adaptation?: unknown;
   };
 }
 
 export function isCanonicalDesignContext(value: unknown): value is NexoraDesignContext {
   const candidate = value as NexoraDesignContext;
-  return Boolean(candidate && typeof candidate === "object" && candidate.schema === "nexora.design-context" && typeof candidate.designSystem === "object");
+  return Boolean(candidate && typeof candidate === "object" && candidate.schema === "nexora.design-context" && candidate.designSystem !== null && typeof candidate.designSystem === "object");
 }
 
 const num = (value: unknown): number | null => (typeof value === "number" && Number.isFinite(value) ? value : null);
@@ -89,6 +94,7 @@ function liftDesignDesign(value: unknown): NexoraDesignContext["design"] {
     assets: "assets",
     implementationHints: "implementationHints",
     accessibilityRules: "accessibilityRules",
+    adaptation: "adaptation",
   };
   const sections: NexoraDesignContext["design"] = {};
   let found = false;
@@ -130,7 +136,14 @@ function toCanonical(value: unknown, fallbackUrl = ""): NexoraDesignContext {
   const sourceVersion = str(model.schemaVersion) || `vinyasa ${str(model.metadata?.version)}`;
   const tokenBlock = model.tokens ?? {};
   const a11y = model.accessibility?.wcagAA;
-  const components = Array.isArray(model.components) ? model.components.length : typeof model.components === "object" && model.components ? Object.keys(model.components).length : 0;
+  const rawComponents = model.components as unknown;
+  const componentBag = rawComponents && typeof rawComponents === "object" && !Array.isArray(rawComponents) ? (rawComponents as { total?: unknown; blocks?: unknown }) : null;
+  const blocks = componentBag?.blocks;
+  const components = Array.isArray(rawComponents)
+    ? rawComponents.length
+    : componentBag
+      ? num(componentBag.total) ?? (Array.isArray(blocks) ? blocks.length : Object.keys(componentBag).length)
+      : 0;
   const design = liftNestedDesign(value);
   return {
     schema: "nexora.design-context",
@@ -149,7 +162,8 @@ function toCanonical(value: unknown, fallbackUrl = ""): NexoraDesignContext {
     },
     health: { overall: num(model.health?.overall) },
     accessibility: { critical: num(a11y?.critical) ?? 0, warning: num(a11y?.warning) ?? 0, pass: num(a11y?.pass) ?? 0 },
-    components: { total: components },
+    // `blocks` is Vinyasa's structured component inventory: kept verbatim, never derived.
+    components: { total: components, ...(blocks !== undefined && blocks !== null ? { blocks } : {}) },
     ...(sourceVersion ? { sourceVersion } : {}),
     ...(design ? { design } : {}),
   };
@@ -218,6 +232,10 @@ export function buildDesignContextMarkdown(ctx: NexoraDesignContext): string {
 
 export async function importDesignContext(context: MemberContext, input: { ctx: NexoraDesignContext; externalRef?: string; source?: DesignSource }) {
   const checksum = checksumOf(input.ctx);
+  // System (token-backed) imports carry actorId === null: the mutation is
+  // recorded without impersonating a user. Session-backed imports keep the real
+  // user id so audit history stays attributable.
+  const actorId = context.actorId;
   return db.$transaction(async (tx) => {
     let artifact = await tx.artifact.findFirst({ where: { projectId: context.projectId, type: ArtifactType.DESIGN_CONTEXT, archivedAt: null } });
     let created = false;
@@ -232,7 +250,7 @@ export async function importDesignContext(context: MemberContext, input: { ctx: 
           title: input.ctx.sourceTitle || "Design Context",
           status: ArtifactStatus.VALIDATED,
           currentVersionNumber: 1,
-          versions: { create: { version: 1, title: input.ctx.sourceTitle || "Design Context", content: buildDesignContextMarkdown(input.ctx), changeNote: `Imported from ${input.ctx.generatedBy}`, createdById: context.userId } },
+          versions: { create: { version: 1, title: input.ctx.sourceTitle || "Design Context", content: buildDesignContextMarkdown(input.ctx), changeNote: `Imported from ${input.ctx.generatedBy}`, createdById: actorId } },
         },
       });
       created = true;
@@ -245,7 +263,7 @@ export async function importDesignContext(context: MemberContext, input: { ctx: 
       } else {
         const next = artifact.currentVersionNumber + 1;
         toVersion = next;
-        await tx.artifactVersion.create({ data: { artifactId: artifact.id, version: next, title: input.ctx.sourceTitle || artifact.title, content: buildDesignContextMarkdown(input.ctx), changeNote: `Synchronized from ${input.ctx.generatedBy}`, createdById: context.userId } });
+        await tx.artifactVersion.create({ data: { artifactId: artifact.id, version: next, title: input.ctx.sourceTitle || artifact.title, content: buildDesignContextMarkdown(input.ctx), changeNote: `Synchronized from ${input.ctx.generatedBy}`, createdById: actorId } });
         await tx.artifact.update({ where: { id: artifact.id }, data: { title: input.ctx.sourceTitle || artifact.title, currentVersionNumber: next } });
       }
     }
@@ -256,7 +274,7 @@ export async function importDesignContext(context: MemberContext, input: { ctx: 
         update: { source: input.source ?? DesignSource.VINYASA, externalRef: input.externalRef ?? input.ctx.sourceUrl, sourceVersion: input.ctx.sourceVersion ?? input.ctx.generatedBy, checksum, payload: input.ctx as object, synchronizedAt: new Date() },
       });
       await tx.mutationRecord.create({
-        data: { projectId: context.projectId, artifactId: artifact.id, actorId: context.userId, kind: created ? MutationKind.CREATE : MutationKind.UPDATE, toVersion, reason: `Design context ${created ? "created" : "synchronized"} from ${input.ctx.generatedBy}`, metadata: { checksum, externalRef: input.externalRef ?? input.ctx.sourceUrl } },
+        data: { projectId: context.projectId, artifactId: artifact.id, actorId, kind: created ? MutationKind.CREATE : MutationKind.UPDATE, toVersion, reason: `Design context ${created ? "created" : "synchronized"} from ${input.ctx.generatedBy}`, metadata: { checksum, externalRef: input.externalRef ?? input.ctx.sourceUrl } },
       });
     }
     const prd = await tx.artifact.findFirst({ where: { projectId: context.projectId, type: ArtifactType.PRD, archivedAt: null } });

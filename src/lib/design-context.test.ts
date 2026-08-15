@@ -46,6 +46,41 @@ describe("parseDesignContextInput", () => {
     expect(ctx.accessibility.critical).toBe(0);
   });
 
+  it("preserves components.blocks and adaptation when Vinyasa sends them", () => {
+    const payload = {
+      schemaVersion: "1.0.0",
+      metadata: { tool: "vinyasa", version: "0.4.0" },
+      source: { url: "https://shop.example/", title: "Shop" },
+      tokens: { colors: { primary: [{ name: "blue", hex: "#2563eb", usage: 55 }] } },
+      health: { overall: 91 },
+      accessibility: { wcagAA: { critical: 0, warning: 1, pass: 5 } },
+      components: { total: 4, blocks: [{ id: "hero", role: "banner" }, { id: "nav" }] },
+      adaptation: { density: "comfortable" },
+    };
+    const { ctx, isValid } = parseDesignContextInput(payload);
+    expect(isValid).toBe(true);
+    expect(ctx.components.total).toBe(4);
+    expect(ctx.components.blocks).toEqual([{ id: "hero", role: "banner" }, { id: "nav" }]);
+    expect(ctx.design?.adaptation).toEqual({ density: "comfortable" });
+  });
+
+  it("keeps components.blocks on a canonical payload", () => {
+    const canonical = {
+      schema: "nexora.design-context",
+      version: 1,
+      generatedBy: "vinyasa 0.4.0",
+      sourceUrl: "https://shop.example/",
+      sourceTitle: "Shop",
+      generatedAt: "2026-08-10T00:00:00.000Z",
+      designSystem: { colors: [{ name: "blue", hex: "#2563eb", usage: 55 }], neutralColors: [], fontFamilies: [], fontSizes: [], spacing: [], radius: [] },
+      health: { overall: 91 },
+      accessibility: { critical: 0, warning: 1, pass: 5 },
+      components: { total: 2, blocks: [{ id: "hero" }] },
+    };
+    const { ctx } = parseDesignContextInput(canonical);
+    expect(ctx.components.blocks).toEqual([{ id: "hero" }]);
+  });
+
   it("rejects payloads without recognizable tokens", () => {
     const { isValid } = parseDesignContextInput({ hello: "world" });
     expect(isValid).toBe(false);

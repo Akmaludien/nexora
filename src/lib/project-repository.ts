@@ -6,12 +6,18 @@ const artifactToDomain: Record<ArtifactType, DomainArtifactType> = { PRD:"prd",R
 const relationshipToDomain: Record<RelationshipType, DomainRelationshipType> = { DEPENDS_ON:"depends_on",IMPLEMENTS:"implements",AFFECTS:"affects",REQUIRES:"requires",MAPS_TO:"maps_to",VALIDATES:"validates",DERIVED_FROM:"derived_from" };
 const statusToDomain = { DRAFT:"Draft", REVIEW:"Review", VALIDATED:"Validated", DEPRECATED:"Draft", ARCHIVED:"Draft" } as const;
 
-export type MemberContext = { userId:string; projectId:string; projectKey:string; role:ProjectRole };
+/**
+ * `userId` identifies the authenticated subject for rate limiting and logging.
+ * `actorId` is the User row to attribute persisted mutations to — it is `null`
+ * for system (integration token) operations, which must never write a synthetic
+ * identity into a User foreign key.
+ */
+export type MemberContext = { userId:string; actorId:string|null; projectId:string; projectKey:string; role:ProjectRole };
 export type VersionDto = { id:string; version:number; title:string; content:string; changeNote:string|null; createdAt:string; current:boolean };
 
 export async function requireMembership(userId:string, projectKey:string, allowed:ProjectRole[]=[ProjectRole.OWNER,ProjectRole.EDITOR,ProjectRole.VIEWER]):Promise<MemberContext|null>{
   const member=await db.projectMember.findFirst({where:{userId,project:{key:projectKey,status:"ACTIVE"},role:{in:allowed}},select:{projectId:true,role:true,project:{select:{key:true}}}});
-  return member?{userId,projectId:member.projectId,projectKey:member.project.key,role:member.role}:null;
+  return member?{userId,actorId:userId,projectId:member.projectId,projectKey:member.project.key,role:member.role}:null;
 }
 
 export async function getProjectKnowledge(projectKey:string):Promise<Project|null>{

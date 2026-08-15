@@ -17,6 +17,7 @@
     "db:stop": "tsx scripts/database.ts stop",
     "test:integration": "tsx scripts/test-integration.ts",
     "test:roundtrip": "tsx scripts/test-integration-roundtrip.ts",
+    "test:http": "tsx scripts/test-integration-http.ts",
     "test:e2e": "tsx scripts/test-e2e.ts",
     "test:mcp": "tsx scripts/test-mcp.ts",
     "mcp": "tsx scripts/mcp-server.ts",
