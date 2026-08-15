@@ -92,6 +92,7 @@ npm run db:dev     # Start persistent local PostgreSQL
 npm run db:migrate # Apply checked-in migrations
 npm run db:seed    # Seed the demo owner and project
 npm run test:integration # PostgreSQL repository integration tests
+npm run test:roundtrip # Nexora ↔ Vinyasa product-context / design-context round-trip (requires DB)
 npm run test:e2e   # HTTP production-flow tests (requires app on port 3421)
 npm run test:e2e-browser # Playwright browser tests (build + DB + port 3200)
 npm run test:mcp   # MCP protocol server assertions
@@ -122,6 +123,7 @@ docs/research/            Competitive research inputs
 - [Architecture](docs/architecture.md): current modules and production target architecture
 - [MCP](docs/mcp.md): current read-only HTTP tools and target protocol foundation
 - [Development](docs/development.md): local workflow, testing, security, and deployment gates
+- [Integration](docs/integration.md): Product Context + Design Bridge + Design Context contracts, `project_id`, env, test commands
 - [Competitive analysis](docs/research/competitive-analysis.md): researched market context and differentiation
 
 ## Production Direction

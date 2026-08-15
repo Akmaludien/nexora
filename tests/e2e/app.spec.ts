@@ -35,7 +35,7 @@ async function currentVersion(page: Page): Promise<number> {
 test("owner can sign in and see the demo project", async ({ page }) => {
   await login(page);
   await expect(page.getByText("Orbit Workspace")).toBeVisible();
-  await expect(page.getByText("Spec health")).toBeVisible();
+  await expect(page.getByText("Spec health").first()).toBeVisible();
 });
 
 test("artifact save persists across reload", async ({ page }) => {

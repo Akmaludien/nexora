@@ -1,17 +1,17 @@
 import { NextResponse } from "next/server";
-import { ArtifactType } from "@prisma/client";
 import { authorizeProjectRequest } from "@/lib/auth";
-import { getDesignContext } from "@/lib/design-context";
-import { getProjectKnowledge } from "@/lib/project-repository";
+import { buildIntegrationContract } from "@/lib/integration";
 import { projectKeySchema } from "@/lib/validation";
 
 /**
- * Read-only product-context endpoint for the Vinyasa integration.
+ * Read-only Product Context endpoint for the Vinyasa integration.
  *
- * Returns the project identity, its artifacts (grouped by type so Vinyasa can
- * derive product pages / features / requirements), relationships, and the last
- * synchronized design context — in a single round trip. Authenticated by either
- * a browser session or the shared server-to-server integration token.
+ * Returns a versioned, deterministic Product Context contract: project identity,
+ * product intelligence (PRD, requirements, features, user stories, user flows,
+ * business rules, architecture, decisions, API, database) with acceptance
+ * criteria and milestones, relationships, and the last synchronized Design
+ * Context — in a single round trip. Authenticated by either a browser session
+ * or the shared server-to-server integration token.
  */
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -21,58 +21,8 @@ export async function GET(request: Request) {
   const context = await authorizeProjectRequest(request, projectKey.data);
   if (!context) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const knowledge = await getProjectKnowledge(context.projectKey);
-  if (!knowledge) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  const contract = await buildIntegrationContract(context);
+  if (!contract) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const byType = (type: ArtifactType) =>
-    knowledge.artifacts.filter((a) => a.type === artifactToDomain[type]).map((a) => ({
-      id: a.id,
-      title: a.title,
-      content: a.content,
-      version: a.version,
-      status: a.status,
-    }));
-
-  const design = await getDesignContext(context.projectId);
-
-  return NextResponse.json({
-    project: {
-      key: context.projectKey,
-      name: knowledge.name,
-      description: knowledge.description,
-      complexity: knowledge.complexity,
-      completeness: knowledge.completeness,
-    },
-    productContext: {
-      prd: byType(ArtifactType.PRD),
-      requirements: byType(ArtifactType.REQUIREMENT),
-      features: byType(ArtifactType.FEATURE),
-      userStories: byType(ArtifactType.USER_STORY),
-      userFlows: byType(ArtifactType.USER_FLOW),
-      architecture: byType(ArtifactType.ARCHITECTURE),
-      decisions: byType(ArtifactType.DECISION),
-      api: byType(ArtifactType.API),
-      database: byType(ArtifactType.DATABASE),
-    },
-    relationships: knowledge.relationships,
-    design,
-  });
+  return NextResponse.json(contract);
 }
-
-const artifactToDomain: Record<ArtifactType, string> = {
-  PRD: "prd",
-  REQUIREMENT: "requirement",
-  FEATURE: "feature",
-  USER_STORY: "user-story",
-  BUSINESS_RULE: "business-rule",
-  USER_FLOW: "user-flow",
-  API: "api",
-  DATABASE: "database",
-  ARCHITECTURE: "architecture",
-  SECURITY: "security",
-  TESTING: "testing",
-  ROADMAP: "roadmap",
-  TASK: "task",
-  DECISION: "decision",
-  DESIGN_CONTEXT: "design-context",
-};

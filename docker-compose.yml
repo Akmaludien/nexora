@@ -29,6 +29,8 @@ services:
       AI_API_KEY: ${AI_API_KEY:-}
       AI_MODEL: ${AI_MODEL:-}
       COOKIE_SECURE: ${COOKIE_SECURE:-true}
+      NEXORA_INTEGRATION_TOKEN: ${NEXORA_INTEGRATION_TOKEN:-}
+      NEXORA_MCP_TOKEN: ${NEXORA_MCP_TOKEN:-}
     ports:
       - "3000:3000"
     depends_on:

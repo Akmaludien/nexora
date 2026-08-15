@@ -21,12 +21,34 @@ export interface NexoraDesignContext {
   };
   health: { overall: number | null };
   accessibility: { critical: number; warning: number; pass: number };
-  components: { total: number };
+  /**
+   * `total` is the component count. `blocks` is Vinyasa's structured component
+   * inventory and is preserved verbatim when supplied.
+   */
+  components: { total: number; blocks?: unknown };
+  /**
+   * Structured Vinyasa design intelligence. Nexora does NOT reinterpret this
+   * information; it is persisted verbatim so it can round-trip back to Vinyasa
+   * or a future Build Pack without loss. Each key is preserved as supplied when
+   * present in the source payload.
+   */
+  design?: {
+    pages?: unknown;
+    components?: unknown;
+    interactions?: unknown;
+    responsiveRules?: unknown;
+    assets?: unknown;
+    implementationHints?: unknown;
+    accessibilityRules?: unknown;
+    layout?: unknown;
+    visualLanguage?: unknown;
+    adaptation?: unknown;
+  };
 }
 
 export function isCanonicalDesignContext(value: unknown): value is NexoraDesignContext {
   const candidate = value as NexoraDesignContext;
-  return Boolean(candidate && typeof candidate === "object" && candidate.schema === "nexora.design-context" && typeof candidate.designSystem === "object");
+  return Boolean(candidate && typeof candidate === "object" && candidate.schema === "nexora.design-context" && candidate.designSystem !== null && typeof candidate.designSystem === "object");
 }
 
 const num = (value: unknown): number | null => (typeof value === "number" && Number.isFinite(value) ? value : null);
@@ -58,6 +80,42 @@ function sliceStringArray(value: unknown): string[] {
   return value.map((item) => str((item as { raw?: unknown }).raw ?? item)).filter(Boolean).slice(0, 8);
 }
 
+function liftDesignDesign(value: unknown): NexoraDesignContext["design"] {
+  const model = value as Record<string, unknown>;
+  if (!model || typeof model !== "object") return undefined;
+  const alias: Record<string, keyof NonNullable<NexoraDesignContext["design"]>> = {
+    responsive: "responsiveRules",
+    responsiveRules: "responsiveRules",
+    visualLanguage: "visualLanguage",
+    layout: "layout",
+    pages: "pages",
+    components: "components",
+    interactions: "interactions",
+    assets: "assets",
+    implementationHints: "implementationHints",
+    accessibilityRules: "accessibilityRules",
+    adaptation: "adaptation",
+  };
+  const sections: NexoraDesignContext["design"] = {};
+  let found = false;
+  for (const [candidate, field] of Object.entries(alias)) {
+    const own = model[candidate];
+    if (own !== undefined && own !== null) {
+      sections[field] = own;
+      found = true;
+    }
+  }
+  return found ? sections : undefined;
+}
+
+function liftNestedDesign(value: unknown): NexoraDesignContext["design"] {
+  const bag = (value as { tokens?: unknown; design?: unknown }) ?? {};
+  const top = liftDesignDesign(value);
+  const nested = bag.design !== undefined ? liftDesignDesign(bag.design) : undefined;
+  const tokens = bag.tokens && typeof bag.tokens === "object" ? liftDesignDesign(bag.tokens) : undefined;
+  return top ?? nested ?? tokens ?? undefined;
+}
+
 function toCanonical(value: unknown, fallbackUrl = ""): NexoraDesignContext {
   if (isCanonicalDesignContext(value)) return value;
   const model = value as {
@@ -78,7 +136,15 @@ function toCanonical(value: unknown, fallbackUrl = ""): NexoraDesignContext {
   const sourceVersion = str(model.schemaVersion) || `vinyasa ${str(model.metadata?.version)}`;
   const tokenBlock = model.tokens ?? {};
   const a11y = model.accessibility?.wcagAA;
-  const components = Array.isArray(model.components) ? model.components.length : typeof model.components === "object" && model.components ? Object.keys(model.components).length : 0;
+  const rawComponents = model.components as unknown;
+  const componentBag = rawComponents && typeof rawComponents === "object" && !Array.isArray(rawComponents) ? (rawComponents as { total?: unknown; blocks?: unknown }) : null;
+  const blocks = componentBag?.blocks;
+  const components = Array.isArray(rawComponents)
+    ? rawComponents.length
+    : componentBag
+      ? num(componentBag.total) ?? (Array.isArray(blocks) ? blocks.length : Object.keys(componentBag).length)
+      : 0;
+  const design = liftNestedDesign(value);
   return {
     schema: "nexora.design-context",
     version: 1,
@@ -96,8 +162,10 @@ function toCanonical(value: unknown, fallbackUrl = ""): NexoraDesignContext {
     },
     health: { overall: num(model.health?.overall) },
     accessibility: { critical: num(a11y?.critical) ?? 0, warning: num(a11y?.warning) ?? 0, pass: num(a11y?.pass) ?? 0 },
-    components: { total: components },
+    // `blocks` is Vinyasa's structured component inventory: kept verbatim, never derived.
+    components: { total: components, ...(blocks !== undefined && blocks !== null ? { blocks } : {}) },
     ...(sourceVersion ? { sourceVersion } : {}),
+    ...(design ? { design } : {}),
   };
 }
 
@@ -121,6 +189,16 @@ export function buildDesignContextMarkdown(ctx: NexoraDesignContext): string {
   if (ctx.health.overall !== null) lines.push(`**Design health:** ${ctx.health.overall}/100`);
   lines.push(`**Komponen terdeteksi:** ${ctx.components.total}`);
   lines.push(`**Accessibility (WCAG AA):** ${ctx.accessibility.pass} pass · ${ctx.accessibility.warning} warning · ${ctx.accessibility.critical} critical`);
+  if (ctx.design) {
+    const counts = [
+      ctx.design.pages && Array.isArray(ctx.design.pages) ? `${ctx.design.pages.length} halaman` : null,
+      ctx.design.assets && Array.isArray(ctx.design.assets) ? `${ctx.design.assets.length} assets` : null,
+      ctx.design.responsiveRules ? "responsive rules" : null,
+      ctx.design.interactions ? "interaction data" : null,
+      ctx.design.implementationHints ? "implementation hints" : null,
+    ].filter(Boolean);
+    if (counts.length) lines.push(`**Design detail:** ${counts.join(" · ")}`);
+  }
   lines.push("");
   if (ctx.designSystem.colors.length + ctx.designSystem.neutralColors.length > 0) {
     lines.push("## Warna");
@@ -154,10 +232,15 @@ export function buildDesignContextMarkdown(ctx: NexoraDesignContext): string {
 
 export async function importDesignContext(context: MemberContext, input: { ctx: NexoraDesignContext; externalRef?: string; source?: DesignSource }) {
   const checksum = checksumOf(input.ctx);
+  // System (token-backed) imports carry actorId === null: the mutation is
+  // recorded without impersonating a user. Session-backed imports keep the real
+  // user id so audit history stays attributable.
+  const actorId = context.actorId;
   return db.$transaction(async (tx) => {
     let artifact = await tx.artifact.findFirst({ where: { projectId: context.projectId, type: ArtifactType.DESIGN_CONTEXT, archivedAt: null } });
     let created = false;
     let toVersion = 1;
+    let duplicate = false;
     if (!artifact) {
       artifact = await tx.artifact.create({
         data: {
@@ -167,24 +250,33 @@ export async function importDesignContext(context: MemberContext, input: { ctx: 
           title: input.ctx.sourceTitle || "Design Context",
           status: ArtifactStatus.VALIDATED,
           currentVersionNumber: 1,
-          versions: { create: { version: 1, title: input.ctx.sourceTitle || "Design Context", content: buildDesignContextMarkdown(input.ctx), changeNote: `Imported from ${input.ctx.generatedBy}`, createdById: context.userId } },
+          versions: { create: { version: 1, title: input.ctx.sourceTitle || "Design Context", content: buildDesignContextMarkdown(input.ctx), changeNote: `Imported from ${input.ctx.generatedBy}`, createdById: actorId } },
         },
       });
       created = true;
     } else {
-      const next = artifact.currentVersionNumber + 1;
-      toVersion = next;
-      await tx.artifactVersion.create({ data: { artifactId: artifact.id, version: next, title: input.ctx.sourceTitle || artifact.title, content: buildDesignContextMarkdown(input.ctx), changeNote: `Synchronized from ${input.ctx.generatedBy}`, createdById: context.userId } });
-      await tx.artifact.update({ where: { id: artifact.id }, data: { title: input.ctx.sourceTitle || artifact.title, currentVersionNumber: next } });
+      const existingRow = await tx.designContext.findUnique({ where: { artifactId: artifact.id } });
+      const existingSource = existingRow?.source === input.source || (input.source === undefined && existingRow?.source === DesignSource.VINYASA);
+      if (existingRow && existingRow.checksum === checksum && existingSource) {
+        duplicate = true;
+        toVersion = artifact.currentVersionNumber;
+      } else {
+        const next = artifact.currentVersionNumber + 1;
+        toVersion = next;
+        await tx.artifactVersion.create({ data: { artifactId: artifact.id, version: next, title: input.ctx.sourceTitle || artifact.title, content: buildDesignContextMarkdown(input.ctx), changeNote: `Synchronized from ${input.ctx.generatedBy}`, createdById: actorId } });
+        await tx.artifact.update({ where: { id: artifact.id }, data: { title: input.ctx.sourceTitle || artifact.title, currentVersionNumber: next } });
+      }
     }
-    await tx.designContext.upsert({
-      where: { artifactId: artifact.id },
-      create: { projectId: context.projectId, artifactId: artifact.id, source: input.source ?? DesignSource.VINYASA, externalRef: input.externalRef ?? input.ctx.sourceUrl, sourceVersion: input.ctx.sourceVersion ?? input.ctx.generatedBy, checksum, payload: input.ctx as object, synchronizedAt: new Date() },
-      update: { source: input.source ?? DesignSource.VINYASA, externalRef: input.externalRef ?? input.ctx.sourceUrl, sourceVersion: input.ctx.sourceVersion ?? input.ctx.generatedBy, checksum, payload: input.ctx as object, synchronizedAt: new Date() },
-    });
-    await tx.mutationRecord.create({
-      data: { projectId: context.projectId, artifactId: artifact.id, actorId: context.userId, kind: created ? MutationKind.CREATE : MutationKind.UPDATE, toVersion, reason: `Design context ${created ? "created" : "synchronized"} from ${input.ctx.generatedBy}`, metadata: { checksum, externalRef: input.externalRef ?? input.ctx.sourceUrl } },
-    });
+    if (!duplicate || created) {
+      await tx.designContext.upsert({
+        where: { artifactId: artifact.id },
+        create: { projectId: context.projectId, artifactId: artifact.id, source: input.source ?? DesignSource.VINYASA, externalRef: input.externalRef ?? input.ctx.sourceUrl, sourceVersion: input.ctx.sourceVersion ?? input.ctx.generatedBy, checksum, payload: input.ctx as object, synchronizedAt: new Date() },
+        update: { source: input.source ?? DesignSource.VINYASA, externalRef: input.externalRef ?? input.ctx.sourceUrl, sourceVersion: input.ctx.sourceVersion ?? input.ctx.generatedBy, checksum, payload: input.ctx as object, synchronizedAt: new Date() },
+      });
+      await tx.mutationRecord.create({
+        data: { projectId: context.projectId, artifactId: artifact.id, actorId, kind: created ? MutationKind.CREATE : MutationKind.UPDATE, toVersion, reason: `Design context ${created ? "created" : "synchronized"} from ${input.ctx.generatedBy}`, metadata: { checksum, externalRef: input.externalRef ?? input.ctx.sourceUrl } },
+      });
+    }
     const prd = await tx.artifact.findFirst({ where: { projectId: context.projectId, type: ArtifactType.PRD, archivedAt: null } });
     if (prd && prd.id !== artifact.id) {
       const existing = await tx.artifactRelationship.findUnique({
@@ -194,7 +286,7 @@ export async function importDesignContext(context: MemberContext, input: { ctx: 
         await tx.artifactRelationship.create({ data: { projectId: context.projectId, sourceArtifactId: artifact.id, targetArtifactId: prd.id, type: RelationshipType.DERIVED_FROM, reason: "Design context is derived from the product vision" } });
       }
     }
-    return { artifactKey: artifact.key, version: toVersion, checksum, synchronizedAt: new Date().toISOString() };
+    return { artifactKey: artifact.key, version: toVersion, checksum, synchronizedAt: new Date().toISOString(), duplicate };
   }, { isolationLevel: "Serializable" });
 }
 

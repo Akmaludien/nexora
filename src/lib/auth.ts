@@ -43,16 +43,17 @@ export async function authorizeProject(projectKey:string,allowed:ProjectRole[]=[
   if (membership === null) {
     return null;
   }
-  return {userId:session.userId,projectId:membership.projectId,projectKey:membership.project.key,role:membership.role,sessionId:session.id,email:session.email};
+  return {userId:session.userId,actorId:session.userId,projectId:membership.projectId,projectKey:membership.project.key,role:membership.role,sessionId:session.id,email:session.email};
 }
 
 /**
- * Fixed UUID used to attribute server-to-server (integration token) actions
- * that have no browser session actor. The referenced foreign keys are UUID
- * columns and nullable, so a synthetic system identity keeps revisions and
- * mutation records consistent without impersonating a real user.
+ * Subject identifier for server-to-server (integration token) requests. It is
+ * deliberately NOT a UUID: no User row backs it, so it must never reach a
+ * foreign key. Attribution for system operations is carried by
+ * `MemberContext.actorId = null` (the FK columns are nullable), which records
+ * the mutation without impersonating a real user.
  */
-const SYSTEM_INTEGRATION_USER_ID = "00000000-0000-4000-8000-000000000001";
+export const SYSTEM_INTEGRATION_SUBJECT = "system:vinyasa-integration";
 const SYSTEM_INTEGRATION_EMAIL = "integration@vinyasa.local";
 
 export function integrationTokenIsValid(token?: string | null): boolean {
@@ -72,9 +73,12 @@ function bearerToken(request: Request): string | null {
  * Authorizes a request against a project using ONE of two valid mechanisms:
  *   1. A browser session (existing flow), or
  *   2. The shared server-to-server integration token (Bearer header).
- * Session-backed results carry a real user identity; token-backed results use
- * the synthetic system identity. Both return the same MemberContext shape so
- * callers never need to know which path authenticated the call.
+ * Session-backed results carry a real user identity (`actorId` = that user).
+ * Token-backed results carry a non-persisted system subject and `actorId: null`
+ * so no synthetic identity is written to a foreign key. Both return the same
+ * MemberContext shape so callers never need to know which path authenticated.
+ * A valid token alone is not sufficient: the project must be ACTIVE and have a
+ * member holding one of the `allowed` roles.
  */
 export async function authorizeProjectRequest(
   request: Request,
@@ -83,9 +87,9 @@ export async function authorizeProjectRequest(
 ) {
   const token = bearerToken(request);
   if (token && integrationTokenIsValid(token)) {
-    const membership = await db.projectMember.findFirst({where:{role:{in:allowed},project:{key:projectKey,status:"ACTIVE"}},select:{projectId:true,role:true,project:{select:{key:true}}}});
+    const membership = await db.projectMember.findFirst({where:{role:{in:allowed},project:{key:projectKey,status:"ACTIVE"}},select:{userId:true,projectId:true,role:true,project:{select:{key:true}}}});
     if (membership === null) return null;
-    return { userId: SYSTEM_INTEGRATION_USER_ID, projectId: membership.projectId, projectKey: membership.project.key, role: membership.role, sessionId: null, email: SYSTEM_INTEGRATION_EMAIL };
+    return { userId: SYSTEM_INTEGRATION_SUBJECT, actorId: null, projectId: membership.projectId, projectKey: membership.project.key, role: membership.role, sessionId: null, email: SYSTEM_INTEGRATION_EMAIL };
   }
   return authorizeProject(projectKey, allowed);
 }
