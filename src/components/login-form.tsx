@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 
-export function LoginForm() {
+export function LoginForm({ demoMode = false }: { demoMode?: boolean }) {
   const params = useSearchParams();
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -39,5 +39,5 @@ export function LoginForm() {
     }
   }
 
-  return <form onSubmit={submit}><label htmlFor="email">Email</label><input id="email" name="email" type="email" defaultValue="architect@nexora.local" autoComplete="email" required/><label htmlFor="password">Password</label><input id="password" name="password" type="password" defaultValue="nexora-production-foundation" autoComplete="current-password" minLength={8} required/>{error && <p role="alert" style={{color: "var(--danger)", fontSize: 13}}>{error}</p>}<button className="btn btn-primary" style={{width: "100%"}} disabled={busy}>{busy ? "Signing in..." : "Enter workspace"}</button></form>;
+  return <form onSubmit={submit}><label htmlFor="email">Email</label><input id="email" name="email" type="email" defaultValue={demoMode ? "architect@nexora.local" : undefined} autoComplete="email" required/><label htmlFor="password">Password</label><input id="password" name="password" type="password" defaultValue={demoMode ? "nexora-production-foundation" : undefined} autoComplete="current-password" minLength={8} required/>{error && <p role="alert" style={{color: "var(--danger)", fontSize: 13}}>{error}</p>}<button className="btn btn-primary" style={{width: "100%"}} disabled={busy}>{busy ? "Signing in..." : "Enter workspace"}</button></form>;
 }

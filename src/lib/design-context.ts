@@ -183,11 +183,11 @@ export function buildDesignContextMarkdown(ctx: NexoraDesignContext): string {
   const lines: string[] = [];
   lines.push("# Design Context");
   lines.push("");
-  lines.push(`> Sinkronisasi design intelligence dari **${ctx.generatedBy || "Vinyasa"}**.`);
-  if (ctx.sourceUrl) lines.push(`> Sumber: ${ctx.sourceUrl}`);
+  lines.push(`> Design intelligence synchronized from **${ctx.generatedBy || "Vinyasa"}**.`);
+  if (ctx.sourceUrl) lines.push(`> Source: ${ctx.sourceUrl}`);
   lines.push("");
   if (ctx.health.overall !== null) lines.push(`**Design health:** ${ctx.health.overall}/100`);
-  lines.push(`**Komponen terdeteksi:** ${ctx.components.total}`);
+  lines.push(`**Detected components:** ${ctx.components.total}`);
   lines.push(`**Accessibility (WCAG AA):** ${ctx.accessibility.pass} pass · ${ctx.accessibility.warning} warning · ${ctx.accessibility.critical} critical`);
   if (ctx.design) {
     const counts = [
@@ -201,7 +201,7 @@ export function buildDesignContextMarkdown(ctx: NexoraDesignContext): string {
   }
   lines.push("");
   if (ctx.designSystem.colors.length + ctx.designSystem.neutralColors.length > 0) {
-    lines.push("## Warna");
+    lines.push("## Colors");
     for (const color of [...ctx.designSystem.neutralColors, ...ctx.designSystem.colors].slice(0, 40)) lines.push(`- ${color.name}: \`${color.hex}\` (${color.usage}%)`);
     lines.push("");
   }
@@ -226,7 +226,7 @@ export function buildDesignContextMarkdown(ctx: NexoraDesignContext): string {
     lines.push("");
   }
   lines.push("---");
-  lines.push("Artifact ini adalah representasi project knowledge dari design intelligence. Datanya tetap disimpan sebagai `DesignContext` agar dapat disinkronkan ulang melalui Vinyasa.");
+  lines.push("This artifact is a project-knowledge representation of design intelligence. The data stays stored as a `DesignContext` so it can be re-synchronized through Vinyasa.");
   return lines.join("\n");
 }
 

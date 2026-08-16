@@ -20,6 +20,8 @@ function envToken(): string {
 const base = process.env.E2E_BASE_URL ?? "http://127.0.0.1:3421";
 const token = envToken();
 const project = process.env.E2E_PROJECT ?? "nexora-demo";
+const ownerEmail = process.env.E2E_OWNER_EMAIL ?? "architect@nexora.local";
+const ownerPassword = process.env.E2E_OWNER_PASSWORD ?? "nexora-production-foundation";
 
 function check(value: unknown, message: string): asserts value {
   if (!value) throw new Error(`FAIL: ${message}`);
@@ -61,7 +63,7 @@ function designPayload(overall: number) {
 
 async function main() {
   check(token, "NEXORA_INTEGRATION_TOKEN is not set — server-to-server path cannot be verified");
-  const cookie = await login("architect@nexora.local", "nexora-production-foundation");
+  const cookie = await login(ownerEmail, ownerPassword);
   const sessionHeaders = { origin: base, "content-type": "application/json", cookie };
   const bearerHeaders = { "content-type": "application/json", authorization: `Bearer ${token}` };
 

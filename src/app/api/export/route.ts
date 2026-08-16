@@ -6,7 +6,7 @@ import { authorizeProject } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { getDesignContext } from "@/lib/design-context";
 import { buildAgentExport } from "@/lib/export";
-import { getProjectKnowledge } from "@/lib/project-repository";
+import { getProjectKnowledge, incrementRateLimit } from "@/lib/project-repository";
 import { projectKeySchema } from "@/lib/validation";
 
 const targets = ["opencode", "claude", "codex", "spec-kit", "generic"] as const;
@@ -18,6 +18,8 @@ export async function GET(request: Request) {
   if (!projectKey.success) return NextResponse.json({ error: "Invalid project" }, { status: 400 });
   const context = await authorizeProject(projectKey.data);
   if (!context) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  const limit = await incrementRateLimit({ subject: context.userId, action: "export", projectId: context.projectId, limit: 30, windowSeconds: 3600 });
+  if (!limit.allowed) return NextResponse.json({ error: "Export rate limit exceeded" }, { status: 429, headers: { "Retry-After": String(limit.retryAfter) } });
   const target = targets.find((item) => item === url.searchParams.get("target")) ?? "generic";
   const project = await getProjectKnowledge(context.projectKey);
   if (!project) return NextResponse.json({ error: "Not found" }, { status: 404 });

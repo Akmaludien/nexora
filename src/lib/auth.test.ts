@@ -3,12 +3,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const projectMemberFindFirst = vi.fn();
 const sessionFindUnique = vi.fn();
+const sessionUpdateMany = vi.fn();
 const cookieGet = vi.fn();
 
 vi.mock("./db", () => ({
   db: {
     projectMember: { findFirst: (...args: unknown[]) => projectMemberFindFirst(...args) },
-    session: { findUnique: (...args: unknown[]) => sessionFindUnique(...args) },
+    session: { findUnique: (...args: unknown[]) => sessionFindUnique(...args), updateMany: (...args: unknown[]) => sessionUpdateMany(...args) },
   },
 }));
 
@@ -39,6 +40,8 @@ beforeEach(() => {
   process.env.NEXORA_INTEGRATION_TOKEN = TOKEN;
   projectMemberFindFirst.mockReset();
   sessionFindUnique.mockReset();
+  sessionUpdateMany.mockReset();
+  sessionUpdateMany.mockResolvedValue({ count: 1 });
   cookieGet.mockReset();
   cookieGet.mockReturnValue(undefined);
 });

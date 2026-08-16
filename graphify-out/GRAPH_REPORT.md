@@ -1,141 +1,147 @@
-# Graph Report - Nexora  (2026-08-10)
+# Graph Report - Nexora  (2026-08-15)
 
 ## Corpus Check
-- 78 files · ~15,833 words
+- 94 files - ~18,703 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 426 nodes · 762 edges · 26 communities (19 shown, 7 thin omitted)
-- Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS
-- Token cost: 0 input · 0 output
+- 114 nodes (94 code + 20 packages) - 274 edges - 19 areas
+- Extraction: 100% EXTRACTED (static import/export parsing) - 0% INFERRED - 0% AMBIGUOUS
 
-## Community Hubs (Navigation)
-- devDependencies
-- Nexora MCP Foundation
-- intelligence.ts
-- compilerOptions
-- Nexora Development
-- dependencies
-- Nexora Product
-- Nexora Architecture
-- scripts
-- Database Architecture
-- Nexora
-- Nexora Competitive Analysis
-- include
-- next.config.ts
-- next-env.d.ts
-- postcss.config.mjs
-- proxy.ts
-- login/page.tsx
-- app/layout.tsx
-- app/page.tsx
-- [id]/layout.tsx
+## Areas
+| Area | Files | Out-edges |
+|---|---|---|
+| app | 24 | 60 |
+| lib | 21 | 51 |
+| components | 12 | 31 |
+| scripts | 8 | 30 |
+| api/auth | 3 | 12 |
+| api/ai | 2 | 10 |
+| api/artifacts | 2 | 10 |
+| api/export | 1 | 10 |
+| api/design-context | 2 | 8 |
+| root | 8 | 7 |
+| api/integration | 2 | 7 |
+| prisma | 2 | 6 |
+| api/mcp | 1 | 6 |
+| api/discovery | 1 | 5 |
+| api/impact | 1 | 5 |
+| api/members | 1 | 5 |
+| api/relationships | 1 | 5 |
+| api/projects | 1 | 4 |
+| api/health | 1 | 2 |
 
-## God Nodes (most connected - your core abstractions)
-1. `getAuthorizedProject()` - 32 edges
-2. `authorizeProject()` - 26 edges
-3. `hasSameOrigin()` - 23 edges
-4. `main()` - 18 edges
-5. `getProjectKnowledge()` - 17 edges
-6. `compilerOptions` - 16 edges
-7. `scripts` - 15 edges
-8. `calculateHealth()` - 14 edges
-9. `Nexora Development` - 13 edges
-10. `Nexora MCP Foundation` - 12 edges
+## God Nodes (most connected)
+1. `src/lib/project-repository.ts` - 29 edges (in 26 / out 3)
+2. `src/lib/auth.ts` - 23 edges (in 18 / out 5)
+3. `src/lib/page-data.ts` - 21 edges (in 17 / out 4)
+4. `src/lib/db.ts` - 16 edges (in 15 / out 1)
+5. `src/lib/validation.ts` - 16 edges (in 15 / out 1)
+6. `src/lib/design-context.ts` - 14 edges (in 10 / out 4)
+7. `src/components/project-shell.tsx` - 12 edges (in 10 / out 2)
+8. `src/lib/intelligence.ts` - 10 edges (in 9 / out 1)
+9. `scripts/test-integration.ts` - 10 edges (in 0 / out 10)
+10. `src/app/api/export/route.ts` - 10 edges (in 0 / out 10)
+11. `src/lib/types.ts` - 9 edges (in 9 / out 0)
+12. `src/components/artifact-list-page.tsx` - 9 edges (in 6 / out 3)
+13. `src/components/artifact-workspace.tsx` - 9 edges (in 1 / out 8)
+14. `src/lib/discovery-repository.ts` - 8 edges (in 5 / out 3)
+15. `prisma/seed.ts` - 7 edges (in 3 / out 4)
 
-## Surprising Connections (you probably didn't know these)
-- `main()` --calls--> `getDiscoveryState()`  [EXTRACTED]
-  scripts/test-integration.ts → src/lib/discovery-repository.ts
-- `main()` --calls--> `getOrCreateImpactProposal()`  [EXTRACTED]
-  scripts/test-integration.ts → src/lib/impact-repository.ts
-- `main()` --calls--> `reviewAllImpactItems()`  [EXTRACTED]
-  scripts/test-integration.ts → src/lib/impact-repository.ts
-- `main()` --calls--> `getProjectKnowledge()`  [EXTRACTED]
-  scripts/test-integration.ts → src/lib/project-repository.ts
-- `main()` --calls--> `incrementRateLimit()`  [EXTRACTED]
-  scripts/test-integration.ts → src/lib/project-repository.ts
+## Entry Points
+- prisma/seed.ts  [prisma]
+- scripts/database.ts  [scripts]
+- scripts/mcp-server.ts  [scripts]
+- scripts/test-e2e.ts  [scripts]
+- scripts/test-integration-http.ts  [scripts]
+- scripts/test-integration-roundtrip.ts  [scripts]
+- scripts/test-integration.ts  [scripts]
+- scripts/test-mcp.ts  [scripts]
+- scripts/worker.ts  [scripts]
+- src/app/api/ai/jobs/route.ts  [api/ai]
+- src/app/api/ai/route.ts  [api/ai]
+- src/app/api/artifacts/restore/route.ts  [api/artifacts]
+- src/app/api/artifacts/route.ts  [api/artifacts]
+- src/app/api/auth/login/route.ts  [api/auth]
+- src/app/api/auth/logout/route.ts  [api/auth]
+- src/app/api/auth/signup/route.ts  [api/auth]
+- src/app/api/design-context/route.ts  [api/design-context]
+- src/app/api/discovery/route.ts  [api/discovery]
+- src/app/api/export/route.ts  [api/export]
+- src/app/api/health/route.ts  [api/health]
+- src/app/api/impact/route.ts  [api/impact]
+- src/app/api/integration/project/route.ts  [api/integration]
+- src/app/api/mcp/route.ts  [api/mcp]
+- src/app/api/members/route.ts  [api/members]
+- src/app/api/projects/route.ts  [api/projects]
+- src/app/api/relationships/route.ts  [api/relationships]
+- src/app/dashboard/page.tsx  [app]
+- src/app/docs/page.tsx  [app]
+- src/app/layout.tsx  [app]
+- src/app/login/page.tsx  [app]
+- src/app/page.tsx  [app]
+- src/app/pricing/page.tsx  [app]
+- src/app/projects/[id]/architecture/page.tsx  [app]
+- src/app/projects/[id]/blueprint/page.tsx  [app]
+- src/app/projects/[id]/database/page.tsx  [app]
+- src/app/projects/[id]/decisions/page.tsx  [app]
+- src/app/projects/[id]/design/page.tsx  [app]
+- src/app/projects/[id]/discovery/page.tsx  [app]
+- src/app/projects/[id]/exports/page.tsx  [app]
+- src/app/projects/[id]/health/page.tsx  [app]
+- src/app/projects/[id]/impact/page.tsx  [app]
+- src/app/projects/[id]/knowledge-graph/page.tsx  [app]
+- src/app/projects/[id]/layout.tsx  [app]
+- src/app/projects/[id]/overview/page.tsx  [app]
+- src/app/projects/[id]/requirements/page.tsx  [app]
+- src/app/projects/[id]/settings/page.tsx  [app]
+- src/app/projects/[id]/testing/page.tsx  [app]
+- src/app/projects/[id]/traceability/page.tsx  [app]
+- src/app/projects/[id]/user-flow/page.tsx  [app]
+- src/app/signup/page.tsx  [app]
+- src/proxy.ts  [root]
 
 ## Import Cycles
 - None detected.
 
-## Communities (26 total, 7 thin omitted)
+## Surprising Connections
+- None detected.
 
-### Community 0 - "devDependencies"
-Cohesion: 0.05
-Nodes (39): embedded-postgres, eslint, eslint-config-next, @eslint/eslintrc, jsdom, devDependencies, embedded-postgres, eslint (+31 more)
+## Integration Subgraph (Vinyasa / Nexora contract)
+- 16 files match the integration pattern, 13 internal edges.
+  - scripts/test-integration-http.ts
+  - scripts/test-integration-roundtrip.ts
+  - scripts/test-integration.ts
+  - src/app/api/auth/login/route.ts
+  - src/app/api/auth/logout/route.ts
+  - src/app/api/auth/signup/route.ts
+  - src/app/api/design-context/route.test.ts
+  - src/app/api/design-context/route.ts
+  - src/app/api/integration/project/route.test.ts
+  - src/app/api/integration/project/route.ts
+  - src/lib/auth.test.ts
+  - src/lib/auth.ts
+  - src/lib/design-context.test.ts
+  - src/lib/design-context.ts
+  - src/lib/integration.ts
+  - src/proxy.ts
 
-### Community 1 - "Nexora MCP Foundation"
-Cohesion: 0.11
-Nodes (18): name, private, scripts, build, db:dev, db:generate, db:migrate, db:seed (+10 more)
+HTTP contract consumed by Vinyasa (nexora-client.ts):
+- GET /api/integration/project?project=<key>  <- Bearer NEXORA_INTEGRATION_TOKEN or session
+- POST /api/design-context  <- Bearer NEXORA_INTEGRATION_TOKEN (writer roles)
 
-### Community 2 - "intelligence.ts"
-Cohesion: 0.07
-Nodes (39): artifactTypes, prisma, relationshipTypes, POST(), POST(), Dashboard(), Blueprint(), HealthPage() (+31 more)
+## Changed-File Impact (uncommitted local changes)
+### prisma/seed.ts
+Imported by (3): `prisma/seed.test.ts`, `scripts/test-integration-roundtrip.ts`, `scripts/test-integration.ts`
+Imports (1): `src/lib/demo.ts`
 
-### Community 3 - "compilerOptions"
-Cohesion: 0.07
-Nodes (29): dom, dom.iterable, esnext, .next-build/dev/types/**/*.ts, .next-build/types/**/*.ts, .next/dev/types/**/*.ts, next-env.d.ts, .next/types/**/*.ts (+21 more)
+### src/app/api/auth/login/route.ts
+Imported by (0): none
+Imports (3): `src/lib/auth.ts`, `src/lib/project-repository.ts`, `src/lib/validation.ts`
 
-### Community 4 - "Nexora Development"
-Cohesion: 0.11
-Nodes (18): AI and MCP tests, AI Provider Development Target, Code Organization, Current State, Database Workflow, Deployment Checklist, Development Commands, Domain Invariants (+10 more)
+### scripts/test-integration-http.ts
+Imported by (0): none
+Imports (0): none
 
-### Community 5 - "dependencies"
-Cohesion: 0.07
-Nodes (27): bcryptjs, jszip, lucide-react, next, dependencies, bcryptjs, jszip, lucide-react (+19 more)
-
-### Community 6 - "Nexora Product"
-Cohesion: 0.12
-Nodes (16): Agent and ecosystem, Core Workflow Target, Current demonstration, Differentiation, Explicit Non-Goals for the First Release, Foundation, Health Semantics, Intelligence (+8 more)
-
-### Community 7 - "Nexora Architecture"
-Cohesion: 0.14
-Nodes (14): Architecture Decisions Still Open, Consistency and Jobs, Current Architecture, Demo and export, Dependency direction, Deployment Target, Domain model, Intelligence (+6 more)
-
-### Community 8 - "scripts"
-Cohesion: 0.09
-Nodes (46): seed(), check(), main(), POST(), apiError(), DELETE(), GET(), PATCH() (+38 more)
-
-### Community 9 - "Database Architecture"
-Cohesion: 0.20
-Nodes (9): AI and impact review, Core ownership, Database Architecture, Deletion and retention, Exports and integrations, Index and constraint strategy, JSON policy, Project knowledge graph (+1 more)
-
-### Community 10 - "Nexora"
-Cohesion: 0.06
-Nodes (31): Competitive Analysis, Authentication and Authorization Target, Design Rules, Launch Criteria, Nexora MCP Foundation, Proposed Read-Only Tools, Proposed Resources, Purpose (+23 more)
-
-### Community 11 - "Nexora Competitive Analysis"
-Cohesion: 0.09
-Nodes (26): GET(), Page(), Page(), Page(), DiscoveryPage(), GraphPage(), ProjectLayout(), Overview() (+18 more)
-
-### Community 12 - "include"
-Cohesion: 0.23
-Nodes (11): GET(), POST(), writers, ImpactPage(), ImpactReview(), Proposal, createImpactProposal(), getOrCreateImpactProposal() (+3 more)
-
-### Community 24 - "[id]/layout.tsx"
-Cohesion: 0.60
-Nodes (5): check(), json(), login(), main(), origin
-
-## Knowledge Gaps
-- **179 isolated node(s):** `nextConfig`, `name`, `version`, `private`, `dev` (+174 more)
-  These have ≤1 connection - possible missing edges or undocumented components.
-- **7 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
-
-## Suggested Questions
-_Questions this graph is uniquely positioned to answer:_
-
-- **Why does `dependencies` connect `dependencies` to `Nexora MCP Foundation`?**
-  _High betweenness centrality (0.184) - this node is a cross-community bridge._
-- **Why does `GET()` connect `dependencies` to `scripts`, `intelligence.ts`?**
-  _High betweenness centrality (0.173) - this node is a cross-community bridge._
-- **What connects `nextConfig`, `name`, `version` to the rest of the system?**
-  _179 weakly-connected nodes found - possible documentation gaps or missing edges._
-- **Should `devDependencies` be split into smaller, more focused modules?**
-  _Cohesion score 0.05128205128205128 - nodes in this community are weakly interconnected._
-- **Should `Nexora MCP Foundation` be split into smaller, more focused modules?**
-  _Cohesion score 0.10526315789473684 - nodes in this community are weakly interconnected._
-- **Should `intelligence.ts` be split into smaller, more focused modules?**
-  _Cohesion score 0.07231638418079096 - nodes in this community are weakly interconnected._
-- **Should `compilerOptions` be split into smaller, more focused modules?**
-  _Cohesion score 0.06666666666666667 - nodes in this community are weakly interconnected._
+## Unresolved Imports
+- None.

@@ -22,7 +22,7 @@ export function calculateHealth(project: Project): HealthReport {
   const required = requiredByComplexity[project.complexity];
   const present = new Set(project.artifacts.map((artifact) => artifact.type));
   for (const type of required) {
-    if (!present.has(type)) issues.push({ id: `missing-${type}`, severity: "critical", artifactId: "PRD-001", message: `Required ${type} artifact is missing.` });
+    if (!present.has(type)) issues.push({ id: `missing-${type}`, severity: "critical", artifactId: type, message: `Required ${type} artifact is missing.` });
   }
   const linked = new Set(project.relationships.flatMap((edge) => [edge.sourceId, edge.targetId]));
   for (const artifact of project.artifacts) {

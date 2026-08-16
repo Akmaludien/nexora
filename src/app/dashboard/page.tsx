@@ -11,6 +11,7 @@ export default async function Dashboard() {
       <div className="eyebrow">Projects</div>
       <h1>Product intelligence workspace</h1>
       <p className="subtle">Every view reads the same durable project knowledge.</p>
+      {members.length === 0 && <section className="sheet" style={{ marginTop: 16 }}><h2 style={{ margin: 0 }}>You have no projects yet.</h2><p className="subtle">Create your first product blueprint below to turn an idea into a connected, traceable specification.</p></section>}
       {await Promise.all(members.map(async (member) => {
         const project = await getProjectKnowledge(member.project.key);
         if (!project) return null;

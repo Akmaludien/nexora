@@ -6,7 +6,7 @@ export default function SignupPage() {
       <section className="auth-box">
         <div className="eyebrow">Early access</div>
         <h1>Create a workspace</h1>
-        <p className="subtle" style={{ fontSize: 13 }}>Akun dibuat dengan bcrypt, diberi rate limit, dan langsung mendapat session. Proyek baru bisa dibuat dari dashboard.</p>
+        <p className="subtle" style={{ fontSize: 13 }}>Accounts are hashed with bcrypt, rate-limited, and signed in immediately. New projects can be created from the dashboard.</p>
         <SignupForm />
       </section>
     </main>

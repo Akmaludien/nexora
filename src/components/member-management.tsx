@@ -68,14 +68,14 @@ export function MemberManagement({ projectKey, isOwner, currentUserEmail, initia
     <main className="page">
       <div className="eyebrow">Project settings</div>
       <h1>Members</h1>
-      <p className="subtle">Roles: OWNER (admin), EDITOR (mutasi), VIEWER (baca). Guard seluruhnya enforce di server.</p>
+      <p className="subtle">Roles: OWNER (admin), EDITOR (mutate), VIEWER (read). All guards are enforced on the server.</p>
       <section className="sheet" style={{ marginTop: 24 }}>
         <h2>Members ({members.length})</h2>
         {members.map((member) => (
           <div className="issue" key={member.id}>
             <span className={`severity ${member.role === "OWNER" ? "warning" : "info"}`}>{member.role}</span>
-            <span><strong>{member.user.displayName ?? member.user.email}</strong><br /><span className="subtle">{member.user.email}{member.user.email === currentUserEmail ? " · kamu" : ""}</span>{isOwner && member.user.email !== currentUserEmail && (
-              <span style={{ display: "flex", gap: 6, marginTop: 6 }}><button className="btn btn-quiet" disabled={busy} onClick={() => changeRole(member)}>Ubah role</button><button className="btn btn-quiet" disabled={busy} onClick={() => remove(member)}>Hapus</button></span>
+            <span><strong>{member.user.displayName ?? member.user.email}</strong><br /><span className="subtle">{member.user.email}{member.user.email === currentUserEmail ? " · you" : ""}</span>{isOwner && member.user.email !== currentUserEmail && (
+              <span style={{ display: "flex", gap: 6, marginTop: 6 }}><button className="btn btn-quiet" disabled={busy} onClick={() => changeRole(member)}>Change role</button><button className="btn btn-quiet" disabled={busy} onClick={() => remove(member)}>Remove</button></span>
             )}</span>
           </div>
         ))}
@@ -84,7 +84,7 @@ export function MemberManagement({ projectKey, isOwner, currentUserEmail, initia
       {isOwner && (
         <section className="sheet" style={{ marginTop: 20 }}>
           <h2>Add member</h2>
-          <p className="subtle">Menambahkan akun yang sudah ada (signup di halaman /signup). Undangan via email belum tersedia — masuk sebagai pengguna jadi {role}.</p>
+          <p className="subtle">Adds an existing account (created at /signup). Email invitations are not available yet — the invited account joins with the {role} role.</p>
           <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 12 }}>
             <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" placeholder="member@example.com" style={{ flex: 1, height: 38, border: "1px solid var(--line)", padding: "0 10px" }} />
             <select value={role} onChange={(e) => setRole(e.target.value as "EDITOR" | "VIEWER")} style={{ height: 38, border: "1px solid var(--line)", padding: "0 8px" }}><option value="EDITOR">EDITOR</option><option value="VIEWER">VIEWER</option></select>
