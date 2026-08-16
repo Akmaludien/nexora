@@ -7,9 +7,22 @@ const prisma=new PrismaClient();
 const artifactTypes:Record<string,ArtifactType>={prd:"PRD",requirement:"REQUIREMENT",feature:"FEATURE","user-story":"USER_STORY","business-rule":"BUSINESS_RULE","user-flow":"USER_FLOW",api:"API",database:"DATABASE",architecture:"ARCHITECTURE",security:"SECURITY",testing:"TESTING",roadmap:"ROADMAP",task:"TASK",decision:"DECISION","design-context":"DESIGN_CONTEXT"};
 const relationshipTypes:Record<string,RelationshipType>={depends_on:"DEPENDS_ON",implements:"IMPLEMENTS",affects:"AFFECTS",requires:"REQUIRES",maps_to:"MAPS_TO",validates:"VALIDATES",derived_from:"DERIVED_FROM"};
 
+export const DEMO_SEED_EMAIL="architect@nexora.local";
+export const DEMO_SEED_PASSWORD="nexora-production-foundation";
+
+export function resolveSeedCredentials(env:Record<string,string|undefined>=process.env):{email:string;password:string}{
+  const isProduction=env.NODE_ENV==="production"||env.SEED_STRICT==="true";
+  const email=(env.SEED_OWNER_EMAIL??DEMO_SEED_EMAIL).toLowerCase();
+  const password=env.SEED_OWNER_PASSWORD??DEMO_SEED_PASSWORD;
+  if(!isProduction)return{email,password};
+  if(email===DEMO_SEED_EMAIL||password===DEMO_SEED_PASSWORD||password.length<12)throw new Error("Refusing to seed with demo credentials in production: set SEED_OWNER_EMAIL and SEED_OWNER_PASSWORD explicitly (password at least 12 characters, not the demo default).");
+  return{email,password};
+}
+
 export async function seed(){
-  const email=(process.env.SEED_OWNER_EMAIL??"architect@nexora.local").toLowerCase();
-  const password=process.env.SEED_OWNER_PASSWORD??"nexora-production-foundation";
+  const credentials=resolveSeedCredentials();
+  const email=credentials.email;
+  const password=credentials.password;
   const owner=await prisma.user.upsert({where:{email},create:{email,passwordHash:await hash(password,12),displayName:"Nexora Architect"},update:{passwordHash:await hash(password,12),status:"ACTIVE"}});
   const project=await prisma.project.upsert({where:{key:demoProject.id},create:{key:demoProject.id,name:demoProject.name,description:demoProject.description,complexity:demoProject.complexity as ProjectComplexity},update:{name:demoProject.name,description:demoProject.description,complexity:demoProject.complexity as ProjectComplexity}});
   await prisma.projectMember.upsert({where:{projectId_userId:{projectId:project.id,userId:owner.id}},create:{projectId:project.id,userId:owner.id,role:ProjectRole.OWNER},update:{role:ProjectRole.OWNER}});

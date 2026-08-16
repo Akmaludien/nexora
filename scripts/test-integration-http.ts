@@ -61,7 +61,9 @@ function designPayload(overall: number) {
 
 async function main() {
   check(token, "NEXORA_INTEGRATION_TOKEN is not set — server-to-server path cannot be verified");
-  const cookie = await login("architect@nexora.local", "nexora-production-foundation");
+  const ownerEmail = process.env.E2E_OWNER_EMAIL ?? "architect@nexora.local";
+const ownerPassword = process.env.E2E_OWNER_PASSWORD ?? "nexora-production-foundation";
+const cookie = await login(ownerEmail, ownerPassword);
   const sessionHeaders = { origin: base, "content-type": "application/json", cookie };
   const bearerHeaders = { "content-type": "application/json", authorization: `Bearer ${token}` };
 
