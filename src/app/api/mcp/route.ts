@@ -5,6 +5,17 @@ import { executeMcpTool } from "@/lib/mcp";
 import { getProjectKnowledge, incrementRateLimit } from "@/lib/project-repository";
 import { mcpSchema, projectKeySchema } from "@/lib/validation";
 
+export async function GET() {
+  const tools = mcpSchema.shape.tool._def.values.map((name) => ({ name, readOnly: true }));
+  return NextResponse.json({
+    protocol: "nexora-mcp",
+    version: "1",
+    mode: "read-only",
+    transport: "POST /api/mcp {projectKey, tool, arguments}",
+    tools,
+  });
+}
+
 export async function POST(request: Request) {
   if (!hasSameOrigin(request)) return NextResponse.json({ error: "Invalid request origin" }, { status: 403 });
   const body = await request.json().catch(() => null);

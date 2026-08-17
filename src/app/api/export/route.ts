@@ -22,6 +22,11 @@ export async function GET(request: Request) {
   const project = await getProjectKnowledge(context.projectKey);
   if (!project) return NextResponse.json({ error: "Not found" }, { status: 404 });
   const bundle = buildAgentExport(project, target);
+  const files = [...Object.keys(bundle.files), ".nexora/relationships.json"];
+  const preview = url.searchParams.get("preview") === "1";
+  if (preview) {
+    return NextResponse.json({ target, files, artifactCount: project.artifacts.length });
+  }
   const zip = new JSZip();
   for (const [file, content] of Object.entries(bundle.files)) zip.file(file, content);
   zip.file(".nexora/relationships.json", JSON.stringify(project.relationships, null, 2));
